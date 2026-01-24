@@ -5,7 +5,6 @@ import resumeRoute from "./routes/resume.route.js";
 import interviewRoute from "./routes/interview.route.js";
 import SummaryRoute from "./routes/summary.route.js";
 import textToSpeechRoute from "./routes/textToSpeech.route.js";
-import testPdfRoute from "./routes/testPdf.route.js";
 
 dotenv.config({quiet: true});
 
@@ -25,12 +24,18 @@ app.use("/api", resumeRoute);
 app.use("/api", interviewRoute);
 app.use("/api", SummaryRoute);
 app.use("/api", textToSpeechRoute);
-app.use("/api/test", testPdfRoute);
 
 app.get('/', (req, res) => {
   res.json({
     success: true,
     message: 'Your server is up and running....'
+  });
+});
+
+app.get("/health", (req, res) => {
+  res.json({
+    success: true,
+    message: 'Server is healthy 👋'
   });
 });
 
