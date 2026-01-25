@@ -2,7 +2,7 @@
 ![Interview Page Screenshot](./frontend/src/assets/interviewPage.png)
 
 # Interview AI 🤖
-Website: [https://interviewai-frontend.vercel.app](https://interviewai-frontend.vercel.app)
+Website: [https://ai-job-interview-qr7p7awke-anand8748s-projects.vercel.app](https://interviewai-frontend.vercel.app)
 
 An intelligent interview preparation platform that helps you practice interviews with AI-powered conversations, analyze your resume, and get detailed performance summaries. Built with modern web technologies and powered by Google's Gemini AI.
 
@@ -62,7 +62,7 @@ An intelligent interview preparation platform that helps you practice interviews
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/YOUR_USERNAME/ai-job-interview.git
+   git clone https://github.com/Anand8748/ai-job-interview.git
    cd ai-job-interview
    ```
 
@@ -74,7 +74,7 @@ An intelligent interview preparation platform that helps you practice interviews
    ```env
    PORT=3000
    FRONTEND_URL=http://localhost:5173
-   GOOGLE_API_KEY=your_google_gemini_api_key_here
+   Open_API_KEY=your_google_gemini_api_key_here
    MONGODB_URI=your_mongodb_connection_string_here
    ```
 
@@ -118,16 +118,16 @@ An intelligent interview preparation platform that helps you practice interviews
 
 ### API Keys Setup
 
-1. **Google AI API**: Get your API key from [Google AI Studio](https://makersuite.google.com/app/apikey)
+1. **Open AI API**: Get your API key from [Open ai api](https://openai.com/api/)
 2. **MongoDB**: Set up a MongoDB database (local or cloud) for session storage
 
 ### Environment Variables
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `PORT` | Backend server port | `3000` |
+| `PORT` | Backend server port | `10000` |
 | `FRONTEND_URL` | Frontend URL for CORS | `http://localhost:5173` |
-| `GOOGLE_API_KEY` | Google AI API key | Required |
+| `OPEN_API_KEY` | OpenAI API key | Required |
 | `MONGODB_URI` | MongoDB connection string | Required |
 
 ## 🏗️ Project Structure

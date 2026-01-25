@@ -21,7 +21,7 @@ const Footer = () => {
                 <div className="flex items-center">
                     <div className="flex items-center space-x-4">
                         <a
-                            href="https://www.linkedin.com/in/dhruv-agrawal-17aa26243"
+                            href="https://www.linkedin.com/in/mt-anand/"
                             target="_blank"
                             rel="noopener noreferrer"
                             aria-label="LinkedIn"
@@ -36,7 +36,7 @@ const Footer = () => {
                             </svg>
                         </a>
                         <a
-                            href="https://github.com/dhruvagrawal1080"
+                            href="https://github.com/Anand8748"
                             target="_blank"
                             rel="noopener noreferrer"
                             aria-label="GitHub"
@@ -51,7 +51,7 @@ const Footer = () => {
                             </svg>
                         </a>
                         <a
-                            href="mailto:dhruvagrawal1080@gmail.com"
+                            href="mailto:anandhatti8748@gmail.com"
                             aria-label="Gmail"
                             className="text-red-400 hover:text-red-600 transition"
                         >
