@@ -55,7 +55,7 @@ const InterviewSummarySchema = z.object({
             .min(3, "Each strength must be at least 3 characters")
             .max(100, "Each strength must be at most 100 characters")
     )
-        .min(2, "strengths must contain at least 2 items")
+        .min(1, "strengths must contain at least 1 item")
         .max(5, "strengths must contain at most 5 items")
         .refine(arr => new Set(arr).size === arr.length, "strengths must not contain duplicates"),
 
@@ -64,7 +64,7 @@ const InterviewSummarySchema = z.object({
             .min(3, "Each area of improvement must be at least 3 characters")
             .max(150, "Each area of improvement must be at most 150 characters")
     )
-        .min(2, "areasOfImprovement must contain at least 2 items")
+        .min(1, "areasOfImprovement must contain at least 1 item")
         .max(4, "areasOfImprovement must contain at most 4 items")
         .refine(arr => new Set(arr).size === arr.length, "areas of improvement must not contain duplicates"),
 
