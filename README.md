@@ -2,7 +2,7 @@
 ![Interview Page Screenshot](./frontend/src/assets/interviewPage.png)
 
 # Interview AI 🤖
-Website: [https://ai-job-interview-qr7p7awke-anand8748s-projects.vercel.app](https://interviewai-frontend.vercel.app)
+Website: [https://interviewai-frontend.vercel.app](https://ai-job-interview-qr7p7awke-anand8748s-projects.vercel.app)
 
 An intelligent interview preparation platform that helps you practice interviews with AI-powered conversations, analyze your resume, and get detailed performance summaries. Built with modern web technologies and powered by Google's Gemini AI.
 
