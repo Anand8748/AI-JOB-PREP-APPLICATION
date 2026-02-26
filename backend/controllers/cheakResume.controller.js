@@ -53,9 +53,18 @@ async function isResumeText(text) {
   return result.answer;
 }
 
-export async function checkResume(req, res) {
+export async function cheakResumeController(req, res) {
   try {
-    const { userId, description } = req.body;
+    // Get userId from authentication (if available) or request body (for anonymous users)
+    const authUserId = req.userId;
+    const { userId: bodyUserId, interviewId, description } = req.body;
+    
+    // Use authenticated userId if available, otherwise use body userId
+    const userId = authUserId || bodyUserId;
+
+    if (!userId || !interviewId) {
+      return res.status(400).json({ error: "userId and interviewId are required" });
+    }
 
     if (!req.file && !description) {
       return res.status(400).json({ error: "Please provide your resume (PDF or text)" });
@@ -78,7 +87,7 @@ export async function checkResume(req, res) {
       return res.status(400).json({ error: "The provided file/description is not a resume" });
     }
 
-    addMemory(userId, userDescription);
+    addMemory(userId, interviewId, userDescription);
 
     res.status(200).json({
       success: true,

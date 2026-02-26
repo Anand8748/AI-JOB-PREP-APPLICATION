@@ -5,8 +5,17 @@ import resumeRoute from "./routes/resume.route.js";
 import interviewRoute from "./routes/interview.route.js";
 import SummaryRoute from "./routes/summary.route.js";
 import textToSpeechRoute from "./routes/textToSpeech.route.js";
+import authRoute from "./routes/auth.route.js";
+import adminRoute from "./routes/admin.route.js";
+import { optionalAuth } from "./middleware/auth.middleware.js";
 
 dotenv.config({quiet: true});
+
+// Debug: Check if environment variables are loaded
+console.log('Environment check:');
+console.log('MONGODB_URI:', process.env.MONGODB_URI ? 'Set' : 'NOT SET');
+console.log('JWT_SECRET:', process.env.JWT_SECRET ? 'Set' : 'NOT SET');
+console.log('OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? 'Set' : 'NOT SET');
 
 const app = express();
 
@@ -20,10 +29,12 @@ app.use(
 app.use(express.json());
 
 // Routes
-app.use("/api", resumeRoute);
-app.use("/api", interviewRoute);
-app.use("/api", SummaryRoute);
-app.use("/api", textToSpeechRoute);
+app.use("/api/auth", authRoute);
+app.use("/api/admin", adminRoute);
+app.use("/api", optionalAuth, resumeRoute);
+app.use("/api", optionalAuth, interviewRoute);
+app.use("/api", optionalAuth, SummaryRoute);
+app.use("/api", optionalAuth, textToSpeechRoute);
 
 app.get('/', (req, res) => {
   res.json({

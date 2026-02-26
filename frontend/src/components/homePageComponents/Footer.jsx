@@ -3,10 +3,10 @@ import { NavLink } from 'react-router-dom'
 
 const Footer = () => {
     return (
-        <div className="border-t border-blue-900 py-6">
-            <div className='max-w-7xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center space-y-4'>
+        <div className="border-t border-white/10 py-8">
+            <div className='max-w-7xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center gap-6'>
                 <NavLink to={'/'} className="flex-shrink-0 flex items-center">
-                    <div className="w-10 h-10 rounded-lg bg-gradient-to-r from-[#38BDF8] to-blue-500 flex items-center justify-center text-white mr-2">
+                    <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#38BDF8] via-[#22c55e] to-[#f97316] flex items-center justify-center text-white mr-3 glow-ring">
                         <svg
                             className="w-5 h-5"
                             xmlns="http://www.w3.org/2000/svg"
@@ -16,7 +16,7 @@ const Footer = () => {
                             <path d="M96 96V256c0 53 43 96 96 96s96-43 96-96H208c-8.8 0-16-7.2-16-16s7.2-16 16-16h80V192H208c-8.8 0-16-7.2-16-16s7.2-16 16-16h80V128H208c-8.8 0-16-7.2-16-16s7.2-16 16-16h80c0-53-43-96-96-96S96 43 96 96zM320 240v16c0 70.7-57.3 128-128 128s-128-57.3-128-128V216c0-13.3-10.7-24-24-24s-24 10.7-24 24v40c0 89.1 66.2 162.7 152 174.4V464H120c-13.3 0-24 10.7-24 24s10.7 24 24 24h72 72c13.3 0 24-10.7 24-24s-10.7-24-24-24H216V430.4c85.8-11.7 152-85.3 152-174.4V216c0-13.3-10.7-24-24-24s-24 10.7-24 24v24z" />
                         </svg>
                     </div>
-                    <span className="text-2xl font-bold text-white">Interview AI</span>
+                    <span className="text-2xl font-bold text-white">AI JOB PREP</span>
                 </NavLink>
                 <div className="flex items-center">
                     <div className="flex items-center space-x-4">
@@ -25,7 +25,7 @@ const Footer = () => {
                             target="_blank"
                             rel="noopener noreferrer"
                             aria-label="LinkedIn"
-                            className="text-blue-400 hover:text-blue-500 transition"
+                            className="text-blue-300 hover:text-blue-400 transition"
                         >
                             <svg
                                 className="w-6 h-6"
@@ -53,7 +53,7 @@ const Footer = () => {
                         <a
                             href="mailto:anandhatti8748@gmail.com"
                             aria-label="Gmail"
-                            className="text-red-400 hover:text-red-600 transition"
+                            className="text-red-300 hover:text-red-400 transition"
                         >
                             <svg
                                 className="w-8 h-8"

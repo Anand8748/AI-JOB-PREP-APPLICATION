@@ -10,13 +10,14 @@ import Home from "./pages/HomePage";
 import InterviewPage from "./pages/InterviewPage";
 import SummaryPage from "./pages/SummaryPage";
 import UploadPage from "./pages/UploadPage";
-import { setUserId } from "./slices/generalInfo.slice";
+import LoginPage from "./pages/LoginPage";
+import DashboardPage from "./pages/DashboardPage";
+import { setUserId, setInterviewId } from "./slices/generalInfo.slice";
 import { pingServer } from "./util/pingServer";
-
 
 function App() {
   const dispatch = useDispatch();
-  const { userId } = useSelector((state) => state.generalInfo);
+  const { userId, isAuthenticated, interviewId } = useSelector((state) => state.generalInfo);
 
   useEffect(() => {
     const loadingToast = toast.loading("Starting server...");
@@ -40,18 +41,26 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (!userId) {
+    // Only generate anonymous userId if user is not authenticated and no userId exists
+    if (!isAuthenticated && !userId) {
       const newId = uuidv4();
       dispatch(setUserId(newId));
     }
-  }, [userId, dispatch]);
+  }, [userId, isAuthenticated, dispatch]);
+
+  useEffect(() => {
+    // Clear interviewId once on app load (fresh start)
+    dispatch(setInterviewId(null));
+  }, [dispatch]);
 
   return (
-    <div className="h-screen w-screen overflow-auto no-scrollbar">
+    <div className="app-shell w-screen overflow-auto no-scrollbar no-select">
       <Navbar />
 
       <Routes>
         <Route path="/" element={<Home />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/dashboard" element={<DashboardPage />} />
         <Route
           path="/upload"
           element={
@@ -68,12 +77,8 @@ function App() {
             </InterviewRoute>
           }
         />
-        <Route
-          path="/summary"
-          element={
-            <SummaryPage />
-          }
-        />
+        <Route path="/summary" element={<SummaryPage />} />
+        <Route path="/summary/:interviewId" element={<SummaryPage />} />
       </Routes>
 
       <Toaster

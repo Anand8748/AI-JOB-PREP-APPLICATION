@@ -9,18 +9,22 @@ const qdrantClient = new QdrantClient({
   apiKey: process.env.QDRANT_API_KEY,
 });
 
-async function ensureUserIdIndex(userId) {
-  const collectionName = `user_memories_${userId}`;
+async function ensureUserIdIndex(userId, interviewId) {
+  const collectionName = `user_memories_${userId}_${interviewId}`;
   
   try {
       await qdrantClient.createPayloadIndex(collectionName, {
           field_name: "userId",
           field_schema: { type: "keyword" }
       });
-      console.log(`Index created for userId in collection: ${collectionName}`);
+      await qdrantClient.createPayloadIndex(collectionName, {
+          field_name: "interviewId",
+          field_schema: { type: "keyword" }
+      });
+      console.log(`Index created for userId and interviewId in collection: ${collectionName}`);
   } catch (err) {
       if (err?.response?.status === 409) {
-          console.log(`Index already exists for userId in collection: ${collectionName}`);
+          console.log(`Index already exists for userId and interviewId in collection: ${collectionName}`);
       } else {
           console.error("Error creating index:", err);
           throw err;
@@ -28,7 +32,7 @@ async function ensureUserIdIndex(userId) {
   }
 }
 
-export async function retriveRelevantMemory(userId, search_param) {
+export async function retriveRelevantMemory(userId, interviewId, search_param) {
   const config = {
     version: 'v1.1',
     embedder: {
@@ -42,7 +46,7 @@ export async function retriveRelevantMemory(userId, search_param) {
     vectorStore: {
       provider: 'qdrant',
       config: {
-        collectionName: `user_memories_${userId}`,
+        collectionName: `user_memories_${userId}_${interviewId}`,
         url: process.env.QDRANT_URL,
         apiKey: process.env.QDRANT_API_KEY,
         embeddingModelDims: 1536,
@@ -52,8 +56,8 @@ export async function retriveRelevantMemory(userId, search_param) {
   };
   const memory = new Memory(config);
   try {
-    await ensureUserIdIndex(userId);
-    const relevantMemory = await memory.search(search_param, { userId });
+    await ensureUserIdIndex(userId, interviewId);
+    const relevantMemory = await memory.search(search_param, { userId, interviewId });
     return relevantMemory;
   }
   catch (error) {

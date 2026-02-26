@@ -10,27 +10,31 @@ const qdrantClient = new QdrantClient({
 });
 
 // Function to ensure required indexes exist
-async function ensureIndexesForRetrieval(userId) {
-  const collectionName = `user_memories_${userId}`;
+async function ensureIndexesForRetrieval(userId, interviewId) {
+  const collectionName = `user_memories_${userId}_${interviewId}`;
   
   try {
-      // Create userId index if it doesn't exist
+      // Create userId and interviewId index if it doesn't exist
       await qdrantClient.createPayloadIndex(collectionName, {
           field_name: "userId",
           field_schema: { type: "keyword" }
       });
-      console.log("Index created for userId");
+      await qdrantClient.createPayloadIndex(collectionName, {
+          field_name: "interviewId",
+          field_schema: { type: "keyword" }
+      });
+      console.log("Index created for userId and interviewId");
   } catch (err) {
       if (err?.response?.status === 409) {
-          console.log("Index already exists for userId");
+          console.log("Index already exists for userId and interviewId");
       } else {
-          console.error("❌ Error creating userId index:", err);
+          console.error("❌ Error creating userId/interviewId index:", err);
           throw err;
       }
   }
 }
 
-export async function retriveAllMemory(userId) {
+export async function retriveAllMemory(userId, interviewId) {
   const config = {
     version: 'v1.1',
     embedder: {
@@ -44,7 +48,7 @@ export async function retriveAllMemory(userId) {
     vectorStore: {
       provider: 'qdrant',
       config: {
-        collectionName: `user_memories_${userId}`,
+        collectionName: `user_memories_${userId}_${interviewId}`,
         url: process.env.QDRANT_URL,
         apiKey: process.env.QDRANT_API_KEY,
         embeddingModelDims: 1536,
@@ -55,8 +59,8 @@ export async function retriveAllMemory(userId) {
   const memory = new Memory(config);
 
   try {
-    await ensureIndexesForRetrieval(userId);
-    const allMemories = await memory.getAll({ userId });
+    await ensureIndexesForRetrieval(userId, interviewId);
+    const allMemories = await memory.getAll({ userId, interviewId });
     return allMemories;
   }
   catch (error) {

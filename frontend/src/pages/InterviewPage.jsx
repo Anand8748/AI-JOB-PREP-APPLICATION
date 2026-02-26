@@ -6,15 +6,18 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import SpeechRecognition, { useSpeechRecognition } from 'react-speech-recognition';
 import { toast } from "sonner";
-import { setIsChatStarted, setIsResumeUploaded, setUserId } from '../slices/generalInfo.slice';
+import { setIsChatStarted, setIsResumeUploaded, setUserId, setInterviewId } from '../slices/generalInfo.slice';
 import { resetMessages, setMessages } from '../slices/messages.slice';
 import { setSummary } from '../slices/summary.slice';
+import { useApi } from '../utils/api.js';
+import { v4 as uuidv4 } from 'uuid';
 
 const InterviewPage = () => {
-    const { userId, isChatStarted } = useSelector((state) => state.generalInfo);
+    const { userId, interviewId, isChatStarted } = useSelector((state) => state.generalInfo);
     const { messages } = useSelector((state) => state.messages);
 
     const dispatch = useDispatch();
+    const api = useApi();
 
     const [isRecording, setIsRecording] = useState(false);
     const [isAISpeaking, setIsAISpeaking] = useState(false);
@@ -36,6 +39,7 @@ const InterviewPage = () => {
     const streamRef = useRef(null);
     const micStream = useRef(null);
     const lastTranscript = useRef('');
+    const hasLoggedInterviewId = useRef(false);
 
     // Memoize static arrays to prevent unnecessary re-renders
     const waveAnimations = useMemo(() => [0.1, 0.2, 0.3, 0.4, 0.5], []);
@@ -73,7 +77,22 @@ const InterviewPage = () => {
         setIsAIThinking(true);
 
         try {
-            const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/ask`, { userId, message });
+            // Generate userId if it doesn't exist (for anonymous users)
+            const currentUserId = userId || localStorage.getItem('userId') || uuidv4();
+            if (!userId) {
+                localStorage.setItem('userId', currentUserId);
+                dispatch(setUserId(currentUserId));
+            }
+            
+            console.log('API Call Debug:', {
+                userId: currentUserId,
+                interviewId,
+                message,
+                hasUserId: !!currentUserId,
+                hasInterviewId: !!interviewId
+            });
+            
+            const response = await api.post("/api/ask", { userId: currentUserId, interviewId, message });
 
             if (response.data.success) {
                 const newMessage = { type: 'ai', message: response.data.reply };
@@ -89,7 +108,7 @@ const InterviewPage = () => {
         } finally {
             setIsAIThinking(false);
         }
-    }, [userId, dispatch]);
+    }, [userId, interviewId, dispatch]);
 
     const speakMessage = useCallback(async (message) => {
         try {
@@ -169,6 +188,25 @@ const InterviewPage = () => {
             setAudioLevel(0);
         }
     }, [listening, isRecording]);
+
+    useEffect(() => {
+        if (interviewId) return;
+
+        const storedInterviewId = localStorage.getItem('interviewId');
+        if (storedInterviewId) {
+            dispatch(setInterviewId(storedInterviewId));
+            return;
+        }
+
+        const newInterviewId = uuidv4();
+        localStorage.setItem('interviewId', newInterviewId);
+        dispatch(setInterviewId(newInterviewId));
+
+        if (!hasLoggedInterviewId.current) {
+            console.log('Generating new interviewId:', newInterviewId);
+            hasLoggedInterviewId.current = true;
+        }
+    }, [interviewId, dispatch]);
 
     useEffect(() => {
         if ('speechSynthesis' in window) {
@@ -525,61 +563,9 @@ const InterviewPage = () => {
                                 </div>
 
                                 {/* Enhanced Input Area */}
-                                <div className="border-t border-gray-700 pt-4">
-                                    {/* Toggle Buttons */}
-                                    <div className="flex items-center justify-center mb-4 space-x-2">
-                                        <button
-                                            onClick={() => setShowTextInput(!showTextInput)}
-                                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                                                showTextInput 
-                                                    ? 'bg-[#38BDF8] text-white' 
-                                                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                                            }`}
-                                        >
-                                            {showTextInput ? '🎤 Voice Input' : '⌨️ Text Input'}
-                                        </button>
-                                    </div>
-
-                                    {showTextInput ? (
-                                        /* Text Input Mode */
-                                        <form onSubmit={handleTextSubmit} className="space-y-3">
-                                            <div className="bg-gray-900 rounded-lg p-4">
-                                                <textarea
-                                                    value={textInput}
-                                                    onChange={(e) => setTextInput(e.target.value)}
-                                                    onKeyDown={(e) => {
-                                                        if (e.key === 'Enter' && !e.shiftKey) {
-                                                            e.preventDefault();
-                                                            handleTextSubmit(e);
-                                                        }
-                                                    }}
-                                                    placeholder="Type your response here... (Press Enter to submit, Shift+Enter for new line)"
-                                                    className="w-full text-white bg-transparent border-none outline-none resize-none p-0 m-0 font-inherit leading-inherit"
-                                                    rows="3"
-                                                    style={{
-                                                        fontFamily: 'inherit',
-                                                        fontSize: 'inherit',
-                                                        lineHeight: 'inherit',
-                                                        overflowY: 'auto'
-                                                    }}
-                                                />
-                                            </div>
-                                            <div className="flex justify-end">
-                                                <button
-                                                    type="submit"
-                                                    disabled={!textInput.trim() || isAIThinking}
-                                                    className={`w-12 h-12 rounded-full flex items-center justify-center text-white transition-colors ${
-                                                        textInput.trim() && !isAIThinking
-                                                            ? 'bg-[#38BDF8] hover:bg-blue-500 cursor-pointer'
-                                                            : 'bg-gray-600 cursor-not-allowed'
-                                                    }`}
-                                                >
-                                                    <IoIosSend className='w-6 h-6' />
-                                                </button>
-                                            </div>
-                                        </form>
-                                    ) : (
-                                        /* Voice Input Mode */
+                                <div className="border-t border-gray-700 pt-4 space-y-6">
+                                    {/* Voice Input Section */}
+                                    <div className="space-y-3">
                                         <div className="space-y-3">
                                             <div className="flex items-center justify-between mb-3">
                                                 <div className="flex items-center space-x-2">
@@ -655,7 +641,47 @@ const InterviewPage = () => {
                                                 </div>
                                             )}
                                         </div>
-                                    )}
+                                    </div>
+
+                                    {/* Text Input Section */}
+                                    <div className="space-y-3">
+                                        <form onSubmit={handleTextSubmit} className="space-y-3">
+                                            <div className="bg-gray-900 rounded-lg p-4 flex items-center">
+                                                <div className="flex-1">
+                                                    <textarea
+                                                        value={textInput}
+                                                        onChange={(e) => setTextInput(e.target.value)}
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === 'Enter' && !e.shiftKey) {
+                                                                e.preventDefault();
+                                                                handleTextSubmit(e);
+                                                            }
+                                                        }}
+                                                        placeholder="Type your response here... (Press Enter to submit, Shift+Enter for new line)"
+                                                        className="w-full text-white bg-transparent border-none outline-none resize-none p-0 m-0 font-inherit leading-inherit"
+                                                        rows="3"
+                                                        style={{
+                                                            fontFamily: 'inherit',
+                                                            fontSize: 'inherit',
+                                                            lineHeight: 'inherit',
+                                                            overflowY: 'auto'
+                                                        }}
+                                                    />
+                                                </div>
+                                                <button
+                                                    type="submit"
+                                                    disabled={!textInput.trim() || isAIThinking}
+                                                    className={`w-12 h-12 rounded-full flex items-center justify-center text-white transition-colors ml-4 flex-shrink-0 ${
+                                                        textInput.trim() && !isAIThinking
+                                                            ? 'bg-[#38BDF8] hover:bg-blue-500 cursor-pointer'
+                                                            : 'bg-gray-600 cursor-not-allowed'
+                                                    }`}
+                                                >
+                                                    <IoIosSend className='w-6 h-6' />
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
                                 </div>
                             </div>
                         </div>

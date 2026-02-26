@@ -1,6 +1,16 @@
 import { NavLink } from "react-router-dom";
+import { useDispatch } from "react-redux";
+import { v4 as uuidv4 } from "uuid";
+import { setInterviewId } from "../../slices/generalInfo.slice";
 
 export default function HeroSection() {
+    const dispatch = useDispatch();
+
+    const handleStartInterview = () => {
+        const newInterviewId = uuidv4();
+        dispatch(setInterviewId(newInterviewId));
+    };
+
     return (
         <section id="hero" className="pt-10 pb-20 md:pb-24 relative max-w-7xl mx-auto px-4">
             <div className="container mx-auto px-4 relative z-10">
@@ -8,7 +18,7 @@ export default function HeroSection() {
                     {/* Left side content */}
                     <div className="w-full md:w-1/2 pr-0 md:pr-8 mb-10 md:mb-0">
                         <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-primary text-white leading-tight mb-6">
-                            Practice Interviews with Your{" "}
+                            Master Interviews with Your{" "}
                             <span className="text-accent">AI Voice Coach</span>
                         </h1>
                         <p className="text-gray-300 text-lg mb-8">
@@ -16,7 +26,11 @@ export default function HeroSection() {
                             realistic voice-based interview powered by AI. Get instant
                             feedback and improve your interview skills.
                         </p>
-                        <NavLink to={'upload'} className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 text-lg">
+                        <NavLink 
+                            to={'upload'} 
+                            onClick={handleStartInterview}
+                            className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 text-lg"
+                        >
                             <span className="bg-[#38BDF8] hover:bg-blue-500 text-white font-semibold rounded-lg px-8 py-4 text-center transition flex items-center justify-center cursor-pointer">
                                 <svg
                                     className="w-5 h-5 mr-2"
@@ -44,7 +58,7 @@ export default function HeroSection() {
 
                     {/* Right side image */}
                     <div className="w-full md:w-1/2">
-                        <div className="relative border">
+                        <div className="relative">
                             <img
                                 className="w-full rounded-xl shadow-lg"
                                 src="https://storage.googleapis.com/uxpilot-auth.appspot.com/f517a8daa8-d0c7303737ba27163681.png"

@@ -1,21 +1,29 @@
-import axios from 'axios';
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { setSummary } from "../slices/summary.slice";
-import { v4 as uuidv4 } from "uuid";
-import { setUserId } from '../slices/generalInfo.slice';
-import { useNavigate } from 'react-router-dom';
+import { setInterviewId } from '../slices/generalInfo.slice';
+import { useNavigate, useParams } from 'react-router-dom';
+import { useApi } from '../utils/api.js';
 
 const SummaryPage = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const { userId } = useSelector((state) => state.generalInfo);
+    const { userId, interviewId, isAuthenticated } = useSelector((state) => state.generalInfo);
     const { summary } = useSelector((state) => state.summary);
     const dispatch = useDispatch();
     const navigate = useNavigate();
+    const { interviewId: interviewIdParam } = useParams();
+    const api = useApi();
+    const currentInterviewId = interviewIdParam || interviewId;
 
     useEffect(() => {
-        if (summary) {
+        if (!currentInterviewId) {
+            setError("Interview ID is missing.");
+            setLoading(false);
+            return;
+        }
+
+        if (summary?.interviewId === currentInterviewId) {
             setLoading(false);
             return;
         }
@@ -24,8 +32,9 @@ const SummaryPage = () => {
             try {
                 setLoading(true);
 
-                const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/summary`, {
+                const response = await api.post("/api/summary", {
                     userId: userId,
+                    interviewId: currentInterviewId,
                     message: "Generate interview summary"
                 }, {
                     headers: {
@@ -34,7 +43,7 @@ const SummaryPage = () => {
                 });
 
                 if (response.data.success && response.data.reply) {
-                    const transformedSummary = transformApiResponse(response.data.reply);
+                    const transformedSummary = transformApiResponse(response.data.reply, response.data.createdAt, response.data.interviewId);
                     dispatch(setSummary(transformedSummary));
                 } else {
                     throw new Error('Invalid API response format');
@@ -48,13 +57,15 @@ const SummaryPage = () => {
         };
 
         fetchSummary();
-    }, []);
+    }, [currentInterviewId, summary, userId]);
 
     // Transform API response to match the component's expected structure
-    const transformApiResponse = (apiData) => {
+    const transformApiResponse = (apiData, createdAt, summaryInterviewId) => {
+        const dateValue = createdAt ? new Date(createdAt) : new Date();
         return {
+            interviewId: summaryInterviewId,
             overall: apiData.overallPerformance || "No overall performance data available",
-            date: new Date().toLocaleDateString('en-US', {
+            date: dateValue.toLocaleDateString('en-US', {
                 year: 'numeric',
                 month: 'long',
                 day: 'numeric'
@@ -97,18 +108,17 @@ const SummaryPage = () => {
 
     const takeAnotherInterviewHandler = () => {
         dispatch(setSummary(null));
-        const newId = uuidv4();
-        dispatch(setUserId(newId));
+        dispatch(setInterviewId(null));
         navigate('/upload');
     }
 
     // Loading state
     if (loading) {
         return (
-            <section className="py-16 bg-gray-900 mt-20 h-full">
+        <section className="py-16 mt-20 h-full">
                 <div className="container mx-auto px-4 max-w-6xl">
                     <div className="text-center">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#38BDF8] mx-auto mb-4"></div>
+                        <div className="rounded-full h-12 w-12 border-b-2 border-[#38BDF8] mx-auto mb-4"></div>
                         <h2 className="text-2xl font-bold text-white mb-4">
                             Generating Your Interview Summary...
                         </h2>
@@ -124,13 +134,13 @@ const SummaryPage = () => {
     // Error state
     if (error) {
         return (
-            <section className="py-16 bg-gray-900 mt-20 h-full">
+        <section className="py-16 mt-20 h-full">
                 <div className="container mx-auto px-4 max-w-6xl">
                     <div className="text-center">
                         <div className="bg-red-900 rounded-lg p-6">
-                            <h2 className="text-2xl font-bold text-red-400 mb-4">
-                                Error Loading Summary
-                            </h2>
+                        <h2 className="text-2xl font-bold text-red-400 mb-4">
+                            Error Loading Summary
+                        </h2>
                             <p className="text-red-400 mb-4">
                                 {error}
                             </p>
@@ -147,8 +157,26 @@ const SummaryPage = () => {
         );
     }
 
+    if (!summary) {
+        return (
+        <section className="py-16 mt-20 h-full">
+                <div className="container mx-auto px-4 max-w-6xl">
+                    <div className="text-center">
+                        <div className="rounded-full h-12 w-12 border-b-2 border-[#38BDF8] mx-auto mb-4"></div>
+                        <h2 className="text-2xl font-bold text-white mb-4">
+                            Generating Your Interview Summary...
+                        </h2>
+                        <p className="text-gray-300">
+                            Please wait while we analyze your interview performance.
+                        </p>
+                    </div>
+                </div>
+            </section>
+        );
+    }
+
     return (
-        <section className="py-16 bg-gray-900 mt-20">
+        <section className="py-16 mt-20">
             <div className="container mx-auto px-4 max-w-6xl">
                 {/* Header */}
                 <div className="text-center mb-12">
@@ -159,7 +187,7 @@ const SummaryPage = () => {
                 </div>
 
                 {/* Summary Card */}
-                <div className="bg-gray-800 rounded-xl shadow-md p-6 md:p-8 space-y-8">
+                <div className="glass-card rounded-3xl p-6 md:p-8 space-y-8">
                     {/* Interview Info */}
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
                         <div>
@@ -196,7 +224,7 @@ const SummaryPage = () => {
                             {summary.scores.map((score, i) => (
                                 <div
                                     key={i}
-                                    className="bg-gray-700 px-4 py-2 rounded-lg"
+                                    className="bg-white/5 border border-white/10 px-4 py-2 rounded-xl"
                                 >
                                     <p className="font-medium text-white">
                                         {score.label}
@@ -266,7 +294,7 @@ const SummaryPage = () => {
                             {summary.recommendations.map((rec, i) => (
                                 <div
                                     key={i}
-                                    className="bg-gray-900 p-4 rounded-lg"
+                                    className="bg-white/5 p-4 rounded-2xl border border-white/10"
                                 >
                                     <p className="font-medium text-white mb-1">
                                         {rec.title}
@@ -297,6 +325,14 @@ const SummaryPage = () => {
                         >
                             Take Another Interview
                         </button>
+                        {isAuthenticated ? (
+                            <button
+                                className="bg-white/10 hover:bg-white/20 text-white font-semibold rounded-lg px-6 py-3 transition flex-1 cursor-pointer"
+                                onClick={() => navigate("/dashboard")}
+                            >
+                                Back to Dashboard
+                            </button>
+                        ) : null}
                     </div>
                 </div>
             </div>

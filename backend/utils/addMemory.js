@@ -33,8 +33,8 @@ const memoryQueue = new Queue('memory-processing', {
     },
 });
 
-async function ensureCollectionAndIndexes(userId) {
-    const collectionName = `user_memories_${userId}`;
+async function ensureCollectionAndIndexes(userId, interviewId) {
+    const collectionName = `user_memories_${userId}_${interviewId}`;
 
     // 1️⃣ Check if collection exists
     const { collections } = await qdrantClient.getCollections();
@@ -60,7 +60,11 @@ async function ensureCollectionAndIndexes(userId) {
             field_name: "userId",
             field_schema: "keyword",
         });
-        console.log("✅ Index created for userId");
+        await qdrantClient.createPayloadIndex(collectionName, {
+            field_name: "interviewId",
+            field_schema: "keyword",
+        });
+        console.log("✅ Index created for userId and interviewId");
     } catch (err) {
         if (err?.response?.status === 409) {
             console.log("ℹ️ Index already exists");
@@ -87,8 +91,8 @@ const memoryWorker = new Worker('memory-processing', async (job) => {
 });
 
 // Memory processing logic
-async function processMemoryJob(userId, message) {
-    await ensureCollectionAndIndexes(userId);
+async function processMemoryJob(userId, interviewId, message) {
+    await ensureCollectionAndIndexes(userId, interviewId);
     const config = {
         version: 'v1.1',
         embedder: {
@@ -102,7 +106,7 @@ async function processMemoryJob(userId, message) {
         vectorStore: {
             provider: 'qdrant',
             config: {
-                collectionName: `user_memories_${userId}`,
+                collectionName: `user_memories_${userId}_${interviewId}`,
                 url: process.env.QDRANT_URL,
                 apiKey: process.env.QDRANT_API_KEY,
                 embeddingModelDims: 1536,
@@ -119,7 +123,7 @@ async function processMemoryJob(userId, message) {
     };
 
     const memory = new Memory(config);
-    await memory.add(message, { userId, metadata: { category: "memory" } });
+    await memory.add(message, { userId, interviewId, metadata: { category: "memory" } });
 }
 
 // Event listeners for monitoring
@@ -143,10 +147,10 @@ process.on('SIGTERM', async () => {
 });
 
 // Simplified synchronous addMemory function for immediate storage
-export async function addMemory(userId, message) {
+export async function addMemory(userId, interviewId, message) {
     try {
         // Ensure collection and indexes exist
-        await ensureCollectionAndIndexes(userId);
+        await ensureCollectionAndIndexes(userId, interviewId);
         
         const config = {
             version: 'v1.1',
@@ -161,7 +165,7 @@ export async function addMemory(userId, message) {
             vectorStore: {
                 provider: 'qdrant',
                 config: {
-                    collectionName: `user_memories_${userId}`,
+                    collectionName: `user_memories_${userId}_${interviewId}`,
                     url: process.env.QDRANT_URL,
                     apiKey: process.env.QDRANT_API_KEY,
                     embeddingModelDims: 1536,
@@ -179,9 +183,9 @@ export async function addMemory(userId, message) {
         const memory = new Memory(config);
 
         // Add memory immediately with correct format
-        await memory.add(message, { userId, metadata: { category: "memory" } });
+        await memory.add(message, { userId, interviewId, metadata: { category: "memory" } });
 
-        console.log(`✅ Memory added immediately for user: ${userId}`);
+        console.log(`✅ Memory added immediately for user: ${userId}, interview: ${interviewId}`);
         return { success: true };
     } catch (error) {
         console.error('Failed to add memory:', error);

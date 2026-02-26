@@ -3,7 +3,7 @@ import { END, MessagesAnnotation, START, StateGraph } from "@langchain/langgraph
 import { MongoDBSaver } from "@langchain/langgraph-checkpoint-mongodb";
 import dotenv from "dotenv";
 import { AIMessage, HumanMessage } from "@langchain/core/messages";
-import { MongoClient } from "mongodb";
+import { DevDatabase } from "../utils/devDatabase.js";
 import { retriveAllMemory } from "../utils/retriveAllMemory.js";
 import { z } from "zod"
 
@@ -107,7 +107,7 @@ const llm = new ChatOpenAI({
 
 async function chatnode(state, config) {
     const { messages } = state;
-    const { userId } = config.configurable;
+    const { userId, interviewId } = config.configurable;
 
     const formattedMessages = messages
         .filter(msg => msg instanceof HumanMessage || msg instanceof AIMessage)
@@ -116,11 +116,11 @@ async function chatnode(state, config) {
             content: msg.content,
         }));
 
-    const allMemoryChunks = await retriveAllMemory(userId);
+    const allMemoryChunks = await retriveAllMemory(userId, interviewId);
 
     let relevantMemory = "";
     for (const mem of allMemoryChunks.results) {
-        relevantMemory += `Memory: ${mem.memory}\n`;
+        relevantMemory += `Memory: ${mem.memory}, createdAt: ${mem.createdAt}\n`;
     }
 
     let wholeConversation = "";
@@ -400,8 +400,24 @@ async function chatnode(state, config) {
     return { messages: [aiMessage] }
 }
 
-const client = new MongoClient(process.env.MONGODB_URI);
-const saver = new MongoDBSaver({ client });
+// MongoDB connection will be handled by DevDatabase (cloud MongoDB only)
+let client = null;
+let saver = null;
+
+const initializeMongoDB = async () => {
+  try {
+    const { mongoDB } = await import("../utils/mongodb.js");
+    client = await mongoDB.connect();
+    saver = new MongoDBSaver({ client });
+    console.log('✅ Cloud MongoDB initialized for interview summary controller');
+  } catch (error) {
+    console.warn('⚠️  Cloud MongoDB not available, interview summaries will not persist checkpoints');
+    console.warn('Error details:', error.message);
+  }
+};
+
+// Initialize MongoDB connection
+initializeMongoDB();
 
 function graphBuilder() {
     const workflow = new StateGraph(MessagesAnnotation)
@@ -409,23 +425,51 @@ function graphBuilder() {
         .addEdge(START, "chatnode")
         .addEdge("chatnode", END)
 
-    const graph = workflow.compile({
-        checkpointer: saver
-    });
+    // Only use checkpointer if MongoDB is available, otherwise compile without it
+    const graphOptions = saver ? { checkpointer: saver } : {};
+    const graph = workflow.compile(graphOptions);
     return graph;
 }
 
 export async function interviewSummary(req, res) {
     try {
-        const { userId, message } = req.body;
-        if (!userId || !message) {
-            return res.status(400).json({ error: "userId and message are required" });
+        // Get userId from authentication (if available) or request body (for anonymous users)
+        const authUserId = req.userId;
+        const { userId: bodyUserId, interviewId, message } = req.body;
+        
+        // Use authenticated userId if available, otherwise use body userId
+        const userId = authUserId || bodyUserId;
+        
+        if (!userId || !interviewId || !message) {
+            return res.status(400).json({ error: "userId, interviewId, and message are required" });
         }
 
-        await client.connect();
+        const db = await DevDatabase.getDatabase();
+        const summaries = db.collection("interviewSummaries");
+
+        const existingSummary = await summaries.findOne({ userId, interviewId });
+        if (existingSummary) {
+            return res.json({
+                success: true,
+                reply: existingSummary.summary,
+                interviewId: existingSummary.interviewId,
+                createdAt: existingSummary.createdAt
+            });
+        }
+
         const graph = graphBuilder();
 
-        let config = { configurable: { thread_id: `session-${userId}`, userId } };
+        let config = { 
+            configurable: { 
+                userId, 
+                interviewId 
+            } 
+        };
+        
+        // Only add thread_id if checkpointer is available
+        if (saver) {
+            config.configurable.thread_id = `${userId}:${interviewId}`;
+        }
 
         let state = { messages: [new HumanMessage(message)] }
 
@@ -433,14 +477,98 @@ export async function interviewSummary(req, res) {
 
         const summaryContent = JSON.parse(updatedMessages.at(-1).content);
 
+        const createdAt = new Date();
+        await summaries.insertOne({
+            userId,
+            interviewId,
+            roleDomain: summaryContent.title,
+            title: summaryContent.title,
+            score: summaryContent.score,
+            rating: summaryContent.rating,
+            sectionScores: summaryContent.sectionScores,
+            strengths: summaryContent.strengths,
+            areasOfImprovement: summaryContent.areasOfImprovement,
+            listeningAdaptability: summaryContent.listeningAdaptability,
+            domainSpecificInsight: summaryContent.domainSpecificInsight,
+            communicationSkills: summaryContent.communicationSkills,
+            recommendedPractice: summaryContent.recommendedPractice,
+            overallPerformance: summaryContent.overallPerformance,
+            summary: summaryContent,
+            createdAt
+        });
+
         res.json({
             success: true,
-            reply: summaryContent
+            reply: summaryContent,
+            interviewId,
+            createdAt
         });
     } catch (error) {
         console.error("Interview agent error:", error);
         res.status(500).json({ error: "Internal server error" });
-    } finally {
-        await client.close();
     }
+}
+
+export async function listInterviewSummaries(req, res) {
+    try {
+        const userId = req.userId;
+        if (!userId) {
+            return res.status(401).json({ error: "Authentication required" });
+        }
+
+        const db = await DevDatabase.getDatabase();
+        const summaries = db.collection("interviewSummaries");
+
+        const results = await summaries
+            .find({ userId })
+            .project({
+                _id: 0,
+                interviewId: 1,
+                title: 1,
+                roleDomain: 1,
+                score: 1,
+                rating: 1,
+                sectionScores: 1,
+                createdAt: 1
+            })
+            .sort({ createdAt: -1 })
+            .toArray();
+
+        res.json({ success: true, summaries: results });
+    } catch (error) {
+        console.error("List summaries error:", error);
+        res.status(500).json({ error: "Internal server error" });
+    }
+    // Connection is managed by the mongoDB singleton - no need to close
+}
+
+export async function getInterviewSummary(req, res) {
+    try {
+        const userId = req.userId;
+        const { interviewId } = req.params;
+
+        if (!userId) {
+            return res.status(401).json({ error: "Authentication required" });
+        }
+
+        const db = await DevDatabase.getDatabase();
+        const summaries = db.collection("interviewSummaries");
+
+        const summaryDoc = await summaries.findOne({ userId, interviewId });
+
+        if (!summaryDoc) {
+            return res.status(404).json({ error: "Summary not found" });
+        }
+
+        res.json({
+            success: true,
+            reply: summaryDoc.summary,
+            interviewId: summaryDoc.interviewId,
+            createdAt: summaryDoc.createdAt
+        });
+    } catch (error) {
+        console.error("Get summary error:", error);
+        res.status(500).json({ error: "Internal server error" });
+    }
+    // Connection is managed by the mongoDB singleton - no need to close
 }

@@ -6,7 +6,7 @@ import Footer from "../components/homePageComponents/Footer"
 
 const Home = () => {
     return (
-        <div className="bg-[#121A2C] pt-20">
+        <div className="pt-20">
             <HeroSection />
             <UploadSection />
             <InterviewSection />

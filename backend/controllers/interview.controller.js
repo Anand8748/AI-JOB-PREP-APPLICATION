@@ -3,7 +3,7 @@ import { END, MessagesAnnotation, START, StateGraph } from "@langchain/langgraph
 import { MongoDBSaver } from "@langchain/langgraph-checkpoint-mongodb";
 import dotenv from "dotenv";
 import { AIMessage, HumanMessage } from "@langchain/core/messages";
-import { MongoClient } from "mongodb";
+import { DevDatabase } from "../utils/devDatabase.js";
 import { addMemory } from "../utils/addMemory.js";
 import { retriveRelevantMemory } from "../utils/retriveRelevantMemory.js";
 
@@ -16,7 +16,7 @@ const llm = new ChatOpenAI({
 
 async function chatnode(state, config) {
     const { messages } = state;
-    const { userId } = config.configurable;
+    const { userId, interviewId } = config.configurable;
 
     const lastMessage = messages.at(-1).content;
     
@@ -38,7 +38,7 @@ async function chatnode(state, config) {
             content: msg.content,
         }));
 
-    const relevantMemoryChunks = await retriveRelevantMemory(userId, lastMessage);
+    const relevantMemoryChunks = await retriveRelevantMemory(userId, interviewId, lastMessage);
 
     let relevantMemory = "";
     for (const mem of relevantMemoryChunks.results) {
@@ -154,8 +154,25 @@ async function chatnode(state, config) {
     return { messages: [response] }
 }
 
-const client = new MongoClient(process.env.MONGODB_URI);
-const saver = new MongoDBSaver({ client });
+// MongoDB connection will be handled by DevDatabase
+let client = null;
+let saver = null;
+
+const initializeMongoDB = async () => {
+  try {
+    const { mongoDB } = await import("../utils/mongodb.js");
+    client = await mongoDB.connect();
+    saver = new MongoDBSaver({ client });
+    console.log('✅ Cloud MongoDB initialized for interview controller');
+  } catch (error) {
+    console.warn('⚠️  Cloud MongoDB not available, running without checkpointing');
+    console.warn('Error details:', error.message);
+    saver = null; // No checkpointer when MongoDB fails
+  }
+};
+
+// Initialize MongoDB connection
+initializeMongoDB();
 
 function graphBuilder() {
     const workflow = new StateGraph(MessagesAnnotation)
@@ -163,42 +180,65 @@ function graphBuilder() {
         .addEdge(START, "chatnode")
         .addEdge("chatnode", END)
 
-    const graph = workflow.compile({
-        checkpointer: saver
-    });
+    // Only use checkpointer if MongoDB is available, otherwise compile without it
+    const graphOptions = saver ? { checkpointer: saver } : {};
+    const graph = workflow.compile(graphOptions);
     return graph;
 }
 
 export async function interviewChatController(req, res) {
     try {
-        const { userId, message } = req.body;
-        if (!userId || !message) {
-            return res.status(400).json({ error: "userId and message are required" });
+        // Get userId from authentication (if available) or request body (for anonymous users)
+        const authUserId = req.userId;
+        const { userId: bodyUserId, interviewId, message } = req.body;
+        
+        // Use authenticated userId if available, otherwise use body userId
+        const userId = authUserId || bodyUserId;
+        
+        if (!userId || !interviewId || !message) {
+            return res.status(400).json({ error: "userId, interviewId, and message are required" });
         }
 
-        await client.connect();
+        // Initialize MongoDB connection if needed
+        if (!saver) {
+            await initializeMongoDB();
+        }
+        
         const graph = graphBuilder();
 
-        let config = { configurable: { thread_id: `session-${userId}`, userId } };
+        let config = { 
+            configurable: { 
+                userId, 
+                interviewId 
+            } 
+        };
+        
+        // Only add thread_id if checkpointer is available
+        if (saver) {
+            config.configurable.thread_id = `${userId}:${interviewId}`;
+        }
+        
         let state = { messages: [{ role: "user", content: message }] }
 
         const { messages: updatedMessages } = await graph.invoke(state, config);
 
         // Add both user message and AI response to memory for summary generation
         const aiResponse = updatedMessages.at(-1).content;
-        await addMemory(userId, [
-            { "role": "user", "content": message },
-            { "role": "assistant", "content": aiResponse }
-        ]);
+        try {
+            await addMemory(userId, interviewId, [
+                { "role": "user", "content": message },
+                { "role": "assistant", "content": aiResponse }
+            ]);
+        } catch (memoryError) {
+            console.warn('⚠️  Memory storage failed:', memoryError.message);
+        }
 
         res.json({
             success: true,
             reply: aiResponse
         });
     } catch (error) {
-        console.error("Interview agent error:", error);
+        console.error("Interview agent error:", error.message);
         res.status(500).json({ error: "Internal server error" });
-    } finally {
-        await client.close();
     }
 }
