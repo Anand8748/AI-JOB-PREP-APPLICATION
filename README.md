@@ -4,7 +4,7 @@
 # Interview AI 🤖
 Website: [https://ai-job-interview-qr7p7awke-anand8748s-projects.vercel.app](https://ai-job-interview-qr7p7awke-anand8748s-projects.vercel.app)
 
-An intelligent interview preparation platform that helps you practice interviews with AI-powered conversations, analyze your resume, and get detailed performance summaries. Built with modern web technologies and powered by Google's Gemini AI.
+An intelligent interview preparation platform that helps you practice interviews with AI-powered conversations, analyze your resume, and get detailed performance summaries. Built with modern web technologies and powered by Open AI API.
 
 ![Interview AI](https://img.shields.io/badge/Interview-AI-blue?style=for-the-badge&logo=robot)
 ![React](https://img.shields.io/badge/React-19.1.1-61DAFB?style=for-the-badge&logo=react)
@@ -38,7 +38,7 @@ An intelligent interview preparation platform that helps you practice interviews
 - **Node.js** - JavaScript runtime
 - **Express.js** - Web application framework
 - **LangChain/LangGraph** - AI/LLM application framework
-- **Google Generative AI** - Gemini AI model for intelligent conversations
+- **Open AI** -Open AI model for intelligent conversations
 - **Mem0AI** - Memory management for conversation context
 - **MongoDB** - Database for session persistence
 - **PDF Parse** - PDF text extraction
@@ -56,7 +56,7 @@ An intelligent interview preparation platform that helps you practice interviews
 - Node.js (v18 or higher)
 - npm or yarn
 - MongoDB (local or cloud)
-- Google AI API key
+- OPEN AI API key
 
 ### Installation
 
